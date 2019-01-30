@@ -1,15 +1,7 @@
-####################
-##REGEX-PY-CRWALER##
-####################
-
-
-
 **WHAT IT DOES.**
 
 Will look through all files and folders starting with the root directory which you have assigned. 
-
 Parses: .doc .docx .xls .xlsx .pdf .msg .txt
-
 Outputs: .txt file with a list of all found files, aswell as the line number of the regex match and the match itself.
 
 **HOW TO.**
