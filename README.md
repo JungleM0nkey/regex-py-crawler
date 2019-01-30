@@ -1,6 +1,6 @@
 **WHAT IT DOES.**
 
-Will look through all files and folders starting with the root directory which you have assigned.<br />
+Python 3 script which look through all files and folders starting with the root directory which you have assigned.<br />
 Parses: .doc .docx .xls .xlsx .pdf .msg .txt<br />
 Outputs: .txt file with a list of all found files, aswell as the line number of the regex match and the match itself.
 
