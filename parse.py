@@ -13,11 +13,10 @@ from nltk.corpus import stopwords
 
 #vars for this crawly boi
 global PATTERN,output_path,error_path
-#path = "c:\\users\\ishevchenko\\Desktop"
-path = "/mnt/Company_Data/Toronto (DATA)"
-#path = "/mnt/c/Users/ishevchenko/Desktop"
-output_path = "/mnt/c/Users/ishevchenko/Desktop/found_files.txt"
-error_path = '/mnt/c/Users/ishevchenko/Desktop/found_errors.txt'
+
+path = ""
+output_path = ""
+error_path = ''
 formats = ('.xlsx','.pdf','.doc','.txt','.docx','.xls','.msg')
 #Arcane patterns for all types of credit cards
 #PATTERN1 ='([0-9]{4})[\-]?([0-9]{4})[\-]?([0-9]{4})[\-]?([0-9]{4})'
