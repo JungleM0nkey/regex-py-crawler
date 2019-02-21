@@ -12,3 +12,6 @@ Outputs: .txt file with a list of all found files, aswell as the line number of 
 3. Assign the regular expression to the **PATTERN1** variable
 4. Run using python3
 
+**LATEST UPDATE : February 21st 2019**
+
+Redesigned the core functions for PDF and XLS parsing. The main regex has also been redone, just all around changes in pretty much every function.Results include no more false positives and a more fleshed out output file.
