@@ -6,41 +6,71 @@ import PyPDF2
 import extract_msg
 import xlrd
 from docx import Document
-global PATTERN,output_path
-#Path for the start directory, works with windows and linux
-path = "your/directory/here"
-#Where the output file is saved
-output_path = "your/directory/here"
+from itertools import groupby
+import pandas as pd
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+
+#vars for this crawly boi
+global PATTERN,output_path,error_path
+#path = "c:\\users\\ishevchenko\\Desktop"
+path = "/mnt/Company_Data/Toronto (DATA)"
+#path = "/mnt/c/Users/ishevchenko/Desktop"
+output_path = "/mnt/c/Users/ishevchenko/Desktop/found_files.txt"
+error_path = '/mnt/c/Users/ishevchenko/Desktop/found_errors.txt'
 formats = ('.xlsx','.pdf','.doc','.txt','.docx','.xls','.msg')
-#Arcane looking regular expression goes here
-PATTERN1 ='your regex pattern here'
+#Arcane patterns for all types of credit cards
+#PATTERN1 ='([0-9]{4})[\-]?([0-9]{4})[\-]?([0-9]{4})[\-]?([0-9]{4})'
+PATTERN1 = '^([3456][0-9]{3})[-]?([0-9]{4})[-]?([0-9]{4})[-]?([0-9]{4})$'
 
+def count_consecutive(num):
+    if max(len(list(g)) for _, g in groupby(num)) >= 4:
+        return True
+    else:
+        return False
 
-#This function checks if the arcane dark arts looking PATTERN variable is present in a string.
-def is_pattern_present(string, file_path, line_num):
-    match = re.findall(PATTERN1, string)
-    if match:
+#This function checks if the arcane dark arts looking PATTERN variable is present in a line of text.
+def is_cc_number(string, file_path, line_num,complex):
+    string = string.replace(' ', '')
+    if complex == False:
+        match = re.match(PATTERN1, string)
+    else:
+        match = re.findall(PATTERN1, string)
+    if not match or count_consecutive(string.replace('-', '')):
+        pass
+    else:
         output_file = open(output_path, "a+")
         output_file.write(f'\n{file_path}\nLine Number: {line_num}\nMatch: {match}\n',)
         output_file.close()
-    else:
-        pass
+#    match = re.findall(PATTERN1, string)
+#    condition = [x for x in match if '0000' in x]
+#    if match :
+#        output_file = open(output_path, "a+")
+#        output_file.write(f'\n{file_path}\nLine Number: {line_num}\nMatch: {match}\n',)
+#        output_file.close()
+#    else:
+#        pass
 
 
+#Parse through the filtered items and see if there is any credit card numbers
 def txt_check(files_to_check,path):
     print(' ')
     print('Parsing .txt files')
     for item in files_to_check:
         #Parse .txt files
         if '.txt' in item:
-            print(f'Looking through: {path}/{item}')
-            item = f'{path}/{item}'
-#            with open(item, "r") as f:
-            line_num = 0
-            with open(item, encoding="utf8", errors='ignore') as f:
-                for line in f:
-                    line_num = line_num + 1
-                    is_pattern_present(line, f'{item}', line_num)
+            try:
+                print(f'Looking through: {path}/{item}')
+                item = f'{path}/{item}'
+    #            with open(item, "r") as f:
+                line_num = 0
+                with open(item, encoding="utf8", errors='ignore') as f:
+                    for line in f:
+                        line_num = line_num + 1
+                        is_cc_number(line, f'{item}', line_num,complex=False)
+            except:
+                print('Skipping, .txt file is not supported.')
+                pass
 
 
 def docx_check(files_to_check,path):
@@ -48,17 +78,20 @@ def docx_check(files_to_check,path):
     print('Parsing .docx files')
     for item in files_to_check:
         #parse .docx files
-        if '.docx' in item:
+        if  item.endswith('.docx'):
             print(f'Looking through: {path}/{item}')
             try:
                 doc = docx.Document(f'{path}/{item}')
                 line_num = 0
                 for paragraph in doc.paragraphs:
                     line_num = line_num + 1
-                    is_pattern_present(paragraph.text, f'{path}/{item}', line_num)
-            #This is raised if there is nothing in the document, so we just ignore files that are empty
-            except (docx.opc.exceptions.PackageNotFoundError, IsADirectoryError) as e:
+                    is_cc_number(paragraph.text, f'{path}/{item}', line_num, complex=False)
+            except Exception as e:
+                print('Skipping, .docx file is not supported.')
+                error_output(f'{path}/{item}',e)
                 pass
+
+
 
 
 def doc_check(files_to_check,path):
@@ -68,13 +101,20 @@ def doc_check(files_to_check,path):
     for item in files_to_check:
         #parse .doc file
         if item.endswith('.doc'):
-            print(f'Looking through: {path}/{item}')
+            print(f'Looking through: {path}/{item}\n')
             try:
                 doc = textract.process(f"{path}/{item}")
                 doc = doc.decode("utf-8")
-                is_pattern_present(doc,f'{path}/{item}', line_num='N/A')
-            except IsADirectoryError:
+                doc = doc.splitlines()
+                line_num = 0
+                for line in doc:
+                    line_num = line_num + 1
+                    is_cc_number(line,f'{path}/{item}', line_num, complex=False)
+            except Exception as e:
+                print('Skipping, .doc file is not supported.')
+                error_output(f'{path}/{item}',e)
                 pass
+
 
 
 def pdf_check(files_to_check,path):
@@ -85,64 +125,134 @@ def pdf_check(files_to_check,path):
         if item.endswith('.pdf'):
             print(f'Looking through: {path}/{item}')
             try:
-                doc = open(f'{path}/{item}', 'rb')
-                pdfreader = PyPDF2.PdfFileReader(doc)
-                total_pages = pdfreader.getNumPages()
-                for page_number in range(total_pages):
-                    page = pdfreader.getPage(page_number)
-                    page_content = page.extractText()
-                    print(f'Looking through {item} PDF Page: {page_number+1}')
-                    is_pattern_present(page_content,f'{path}/{item}',page_number+1)
-            except IsADirectoryError:
+                filename = f'{path}/{item}'
+                pdfFileObj = open(filename, 'rb')
+                pdfReader = PyPDF2.PdfFileReader(pdfFileObj)
+                num_pages = pdfReader.numPages
+                count = 0
+                text = ""
+                #Read each page
+                while count < num_pages:
+                    pageObj = pdfReader.getPage(count)
+                    count += 1
+                    text += pageObj.extractText()
+                #Lets add a failsafe for scanned files
+                if text != "":
+                    text = text
+                else:
+                    text = textract.process(filename, method='tesseract', language='eng')
+                #Time to clean the text variable
+                #Do this if the file is actually a hidden html file
+                try:
+                    tokens = word_tokenize(text)
+                except TypeError:
+                    text = text.decode('utf-8')
+                    tokens = word_tokenize(text)
+                punctuations = ['(',')',';',':','[',']',',']
+                stop_words = stopwords.words('english')
+                keywords = [word for word in tokens if not word in stop_words and not word in punctuations]
+                for word in keywords:
+                    print(word)
+                    is_cc_number(word,f'{path}/{item}','N/A', complex=False)
+            except Exception as e:
+                print('Skipping, .pdf file exception.')
+                error_output(f'{path}/{item}',e)
                 pass
+#            try:
+#                doc = open(f'{path}/{item}', 'rb')
+#                pdfreader = PyPDF2.PdfFileReader(doc)
+#                total_pages = pdfreader.getNumPages()
+#                for page_number in range(total_pages):
+#                    page = pdfreader.getPage(page_number)
+#                    page_content = page.extractText()
+#                    page_content = page_content.splitlines()
+#                    for line in page_content:
+#                        #print(f'Looking through {item} PDF Page: {page_number+1}')
+#                        is_cc_number(line,f'{path}/{item}',page_number+1, complex=False)
+#            except TypeError as e:
+#                print('Skipping, .pdf file is not supported.')
+#                error_output(f'{path}/{item}',e)
+#            except Exception as e:
+#                print('Skipping, .pdf file is not supported.')
+#                error_output(f'{path}/{item}',e)
+
+
 
 
 def xlsx_check(files_to_check,path):
     print(' ')
     print('Parsing .xlsx files')
     for item in files_to_check:
-        #parse .doc file
         if item.endswith('.xlsx'):
             print(f'Looking through: {path}/{item}')
             try:
                 doc = textract.process(f"{path}/{item}")
                 doc = doc.decode("utf-8")
-                is_pattern_present(doc,f'{path}/{item}', line_num='N/A')
-            except IsADirectoryError:
+                doc = doc.splitlines()
+                line_num = 0
+                for line in doc:
+                    line_num = line_num + 1
+                    is_cc_number(line,f'{path}/{item}', line_num=line_num,complex=False)
+            except Exception as e:
+                print('Skipping, .xlsx file is not supported.')
+                error_output(f'{path}/{item}',e)
                 pass
+
 
 def xls_check(files_to_check,path):
     print(' ')
     print('Parsing .xls files')
     for item in files_to_check:
-        #parse .doc file
         if item.endswith('.xls'):
             print(f'Looking through: {path}/{item}')
+            #Create dataframe from first sheet
             try:
-                doc = textract.process(f"{path}/{item}")
-                doc = doc.decode("utf-8")
-                is_pattern_present(doc,f'{path}/{item}', line_num='N/A')
-            except xlrd.XLRDError:
+                xls_sheets = pd.read_excel(f'{path}/{item}', sheet_name=None)
+                xls_sheets = str(xls_sheets)
+                xls_sheets = xls_sheets.splitlines()
                 line_num = 0
-                with open(f"{path}/{item}", encoding="ISO-8859-1") as f:
-                    for line in f:
+                for sheet in xls_sheets:
+                    line_num = line_num + 1
+                    line = sheet[2:]
+                    is_cc_number(line,f'{path}/{item}', line_num=line_num,complex=False)
+            except xlrd.XLRDError:
+                try:
+                    xls_sheets = pd.read_html(f'{path}/{item}')
+                    xls_sheets = str(xls_sheets)
+                    xls_sheets = xls_sheets.splitlines()
+                    line_num = 0
+                    for sheet in xls_sheets:
                         line_num = line_num + 1
-                        is_pattern_present(line, f'{path}/{item}', line_num='N/A')
-            except IsADirectoryError:
+                        line = sheet[2:]
+                        is_cc_number(line,f'{path}/{item}', line_num=line_num,complex=False)
+                except Exception as e:
+                    print('Skipping, .xls file is not supported.')
+                    error_output(f'{path}/{item}',e)
+                    pass
+            except Exception as e:
+                print('Skipping, .xls file is not supported.')
+                error_output(f'{path}/{item}',e)
                 pass
+
 
 
 def msg_check(files_to_check,path):
     print(' ')
     print('Parsing .msg files')
     for item in files_to_check:
-        #parse .doc file
         if item.endswith('.msg'):
             print(f'Looking through: {path}/{item}')
-            msg = extract_msg.Message(f'{path}/{item}')
-            msg = msg._getStringStream('__substg1.0_1000')
-            is_pattern_present(msg,f'{path}/{item}', line_num='N/A')
-            
+            try:
+                msg = extract_msg.Message(f'{path}/{item}')
+                msg = msg._getStringStream('__substg1.0_1000')
+                msg = msg.splitlines()
+                for line in msg:
+                    is_cc_number(line,f'{path}/{item}', line_num='N/A', complex=False)
+            except Exception as e:
+                print('Skipping, .msg file is not supported.')
+                error_output(f'{path}/{item}',e)
+                pass
+
 
 def check_all_file_types(files_to_check, dir):
     print(' ')
@@ -160,22 +270,32 @@ def check_all_file_types(files_to_check, dir):
         docx_check(files_to_check,dir)
         doc_check(files_to_check,dir)
 
-		
-#The recursive crawl through directories function, pretty straight forward.
 def dir_crawl(path):
+    print(f'Building directory tree for {path}')
     subdir_list = [x[0] for x in os.walk(path)]
+    print('Building Complete')
+    print(subdir_list)
     #Fetch the files to check for every subdirectory
     for dir in subdir_list:
-        files_to_check = []
-        path_contents = [x for x in os.listdir(dir)]
-        for format in formats:
-            for item in path_contents:
-                if format in item:
-                    #Create a list of files for the directory and then start a check for each file in the list
-                    files_to_check.append(item)
-					#Do not look through temp files, it breaks things.
-                    files_to_check = [ x for x in files_to_check if not x.startswith('~')]
-        check_all_file_types(files_to_check, dir)
+        try:
+            files_to_check = []
+            path_contents = [x for x in os.listdir(dir)]
+            for format in formats:
+                for item in path_contents:
+                    if format in item:
+                        #Create a list of files for the directory and then start a check for each file in the list
+                        files_to_check.append(item)
+                        files_to_check = [ x for x in files_to_check if not x.startswith('~')]
+            check_all_file_types(files_to_check, dir)
+        except FileNotFoundError as e:
+            error_output(dir,e)
+    print('Done')
+
+def error_output(dir,error):
+    print(f'Error found\nError Type: {error}')
+    file = open(error_path, "a+")
+    file.write(f'\n{dir}\nError: {error}\n',)
+    file.close()
 
 ###########################################################################################################################
 
