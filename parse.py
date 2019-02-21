@@ -16,10 +16,9 @@ global PATTERN,output_path,error_path
 
 path = ""
 output_path = ""
-error_path = ''
+error_path = ""
 formats = ('.xlsx','.pdf','.doc','.txt','.docx','.xls','.msg')
 #Arcane patterns for all types of credit cards
-#PATTERN1 ='([0-9]{4})[\-]?([0-9]{4})[\-]?([0-9]{4})[\-]?([0-9]{4})'
 PATTERN1 = '^([3456][0-9]{3})[-]?([0-9]{4})[-]?([0-9]{4})[-]?([0-9]{4})$'
 
 def count_consecutive(num):
@@ -41,14 +40,7 @@ def is_cc_number(string, file_path, line_num,complex):
         output_file = open(output_path, "a+")
         output_file.write(f'\n{file_path}\nLine Number: {line_num}\nMatch: {match}\n',)
         output_file.close()
-#    match = re.findall(PATTERN1, string)
-#    condition = [x for x in match if '0000' in x]
-#    if match :
-#        output_file = open(output_path, "a+")
-#        output_file.write(f'\n{file_path}\nLine Number: {line_num}\nMatch: {match}\n',)
-#        output_file.close()
-#    else:
-#        pass
+
 
 
 #Parse through the filtered items and see if there is any credit card numbers
@@ -157,23 +149,7 @@ def pdf_check(files_to_check,path):
                 print('Skipping, .pdf file exception.')
                 error_output(f'{path}/{item}',e)
                 pass
-#            try:
-#                doc = open(f'{path}/{item}', 'rb')
-#                pdfreader = PyPDF2.PdfFileReader(doc)
-#                total_pages = pdfreader.getNumPages()
-#                for page_number in range(total_pages):
-#                    page = pdfreader.getPage(page_number)
-#                    page_content = page.extractText()
-#                    page_content = page_content.splitlines()
-#                    for line in page_content:
-#                        #print(f'Looking through {item} PDF Page: {page_number+1}')
-#                        is_cc_number(line,f'{path}/{item}',page_number+1, complex=False)
-#            except TypeError as e:
-#                print('Skipping, .pdf file is not supported.')
-#                error_output(f'{path}/{item}',e)
-#            except Exception as e:
-#                print('Skipping, .pdf file is not supported.')
-#                error_output(f'{path}/{item}',e)
+
 
 
 
